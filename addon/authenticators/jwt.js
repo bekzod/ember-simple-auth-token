@@ -87,12 +87,8 @@ export default TokenAuthenticator.extend({
 
         if (wait > 0) {
           if (this.refreshAccessTokens) {
-            try {
-              this.scheduleAccessTokenRefresh(dataObject.get(this.tokenExpireName), refreshToken);
-              return resolve(data);
-            } catch (error) {
-              return reject(error);
-            }
+            this.scheduleAccessTokenRefresh(dataObject.get(this.tokenExpireName), refreshToken);
+            return resolve(data);
           } else {
             return resolve(data);
           }
@@ -136,18 +132,10 @@ export default TokenAuthenticator.extend({
                                  otherwise
   */
   authenticate(credentials, headers) {
-    return new Promise((resolve, reject) => {
-      this.makeRequest(this.serverTokenEndpoint, credentials, assign({}, this.headers, headers)).then(response => {
-          try {
-            const sessionData = this.handleAuthResponse(response.json);
-            return resolve(sessionData);
-          } catch (error) {
-            return reject(error);
-          }
-        }).catch(error => {
-          return reject(error);
+      this.makeRequest(this.serverTokenEndpoint, credentials, assign({}, this.headers, headers))
+        .then(response => {
+          return this.handleAuthResponse(response.json);
         });
-    });
   },
 
   /**
@@ -196,20 +184,15 @@ export default TokenAuthenticator.extend({
   refreshAccessToken(token) {
     const data = this.makeRefreshData(token);
 
-    return new Promise((resolve, reject) => {
-      this.makeRequest(this.serverTokenRefreshEndpoint, data, this.headers).then(response => {
-          try {
-            const sessionData = this.handleAuthResponse(response.json);
-            this.trigger('sessionDataUpdated', sessionData);
-            return resolve(sessionData);
-          } catch (error) {
-            return reject(error);
-          }
-        }).catch(error => {
-          this.handleTokenRefreshFail(error.status);
-          return reject(error);
-        });
-    });
+    return this.makeRequest(this.serverTokenRefreshEndpoint, data, this.headers)
+      .then(response => {
+        const sessionData = this.handleAuthResponse(response.json);
+        this.trigger('sessionDataUpdated', sessionData);
+        return sessionData;
+      }).catch(error => {
+        this.handleTokenRefreshFail(error.status);
+        return Promise.reject(error);
+      });
   },
 
   /**
